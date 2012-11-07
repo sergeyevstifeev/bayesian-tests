@@ -1,0 +1,3 @@
+*.o
+*.dSYM
+isc2/libisc.a

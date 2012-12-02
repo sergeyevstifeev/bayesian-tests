@@ -75,8 +75,9 @@ def execute_nonbayesian_test(datafolder):
 def execute_test(datafolder, f):
     data_dirs = get_immediate_subdirectories(datafolder)
     for data_dir in data_dirs:
-        other_dirs = remove_element(data_dir, data_dirs)
-        for other_data_dir in other_dirs:
+        # other_dirs = remove_element(data_dir, data_dirs)
+        for other_data_dir in data_dirs:
+            print data_dir, "against", other_data_dir
             # Get false negatives
             anom_out = to_float(f("gaussian", get_merged_data(data_dir), get_anomalous_data(other_data_dir)))
             print "False negatives perc:", len(filter_normal(anom_out))*100.0/len(anom_out), "%"

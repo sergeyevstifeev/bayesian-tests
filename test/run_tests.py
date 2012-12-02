@@ -42,7 +42,7 @@ def filter_normal(l):
     return filter (lambda x: x <= THRESHOLD, l)
 
 def to_float(datastr):
-    return map(float, datastr.splitlines())
+    return map(float, datastr.rstrip().splitlines())
 
 ##
 ## Bayesian
@@ -54,7 +54,7 @@ def run_bayesian(dist_type, train_data, test_data):
     return out
 
 def execute_bayesian_test(datafolder, dist_type):
-    execute_test(datafolder, lambda x,y,z: run_bayesian(x,y,z))
+    execute_test(datafolder, lambda x,y: run_bayesian(dist_type,x,y))
 
 ##
 ## Nonbayesian
@@ -65,12 +65,11 @@ def run_nonbayesian(dist_type, train_data, test_data):
         out = subprocess.check_output(["./gaussian.R", train_data, test_data])
     elif (dist_type == "poisson"):
         out = subprocess.check_output(["./poisson.py", train_data, test_data])
-        exit(1)
     os.chdir("../test")
     return out
 
 def execute_nonbayesian_test(datafolder, dist_type):
-    execute_test(datafolder, lambda x,y,z: run_nonbayesian(x,y,z))
+    execute_test(datafolder, lambda x,y: run_nonbayesian(dist_type,x,y))
 
 def execute_test(datafolder, f):
     data_dirs = get_immediate_subdirectories(datafolder)
@@ -79,10 +78,10 @@ def execute_test(datafolder, f):
         for other_data_dir in data_dirs:
             print data_dir, "against", other_data_dir
             # Get false negatives
-            anom_out = to_float(f("gaussian", get_merged_data(data_dir), get_anomalous_data(other_data_dir)))
+            anom_out = to_float(f(get_merged_data(data_dir), get_anomalous_data(other_data_dir)))
             print "False negatives perc:", len(filter_normal(anom_out))*100.0/len(anom_out), "%"
             # Get false positives
-            norm_out = to_float(f("gaussian", get_merged_data(data_dir), get_normal_data(other_data_dir)))
+            norm_out = to_float(f(get_merged_data(data_dir), get_normal_data(other_data_dir)))
             print "False positives perc:", len(filter_anomalous(norm_out))*100.0/len(norm_out), "%"
 
 ##

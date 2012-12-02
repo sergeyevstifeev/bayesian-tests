@@ -53,7 +53,7 @@ def run_bayesian(dist_type, train_data, test_data):
     os.chdir("../test")
     return out
 
-def execute_bayesian_test(datafolder):
+def execute_bayesian_test(datafolder, dist_type):
     execute_test(datafolder, lambda x,y,z: run_bayesian(x,y,z))
 
 ##
@@ -63,13 +63,13 @@ def run_nonbayesian(dist_type, train_data, test_data):
     os.chdir("../nonbayesian")
     if (dist_type == "gaussian"):
         out = subprocess.check_output(["./gaussian.R", train_data, test_data])
-    else:
-        print "dist_type not supported:", dist_type
+    elif (dist_type == "poisson"):
+        out = subprocess.check_output(["./poisson.py", train_data, test_data])
         exit(1)
     os.chdir("../test")
     return out
 
-def execute_nonbayesian_test(datafolder):
+def execute_nonbayesian_test(datafolder, dist_type):
     execute_test(datafolder, lambda x,y,z: run_nonbayesian(x,y,z))
 
 def execute_test(datafolder, f):
@@ -88,16 +88,26 @@ def execute_test(datafolder, f):
 ##
 ## Main
 ##
-def main():
-    execute_bayesian_test(datafolder)
-    #execute_nonbayesian_test(datafolder)
+def main(datafolder, strategy, dist_type):
+    if (strategy == "frequentist"):
+        execute_nonbayesian_test(datafolder, dist_type)
+    elif (strategy == "bayesian"):
+        execute_bayesian_test(datafolder, dist_type)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print "Usage:", sys.argv[0], "<datafolder>"
+    if len(sys.argv) != 4:
+        print "Usage:", sys.argv[0], "datafolder bayesian|frequentist gaussian|poisson"
         exit(1)
     datafolder = sys.argv[1]
     if (not os.path.isdir(datafolder)):
         print "Specified data folder", datafolder, "does not exist"
         exit(1)
-    main()
+    strategy = sys.argv[2]
+    if (strategy != "bayesian" and strategy != "frequentist"):
+        print "Unknown strategy:", strategy
+        exit(1)
+    dist_type = sys.argv[3]
+    if (dist_type != "gaussian" and dist_type != "poisson"):
+        print "Unknown distribution type:", dist_type
+        exit(1)
+    main(datafolder, strategy, dist_type)

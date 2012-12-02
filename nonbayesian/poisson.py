@@ -18,7 +18,7 @@ def lower_quantile_cd(prob, mean):
     i = 0
     while (pmf(i, mean) <= prob and i <= mean):
         i = i+1
-    return cdf(i-1, mean)
+    return cdf(max(0, i-1), mean)
 
 def upper_quantile_cd(prob, mean):
     i = int(mean)

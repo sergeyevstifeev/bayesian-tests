@@ -4,7 +4,7 @@ import sys
 import os
 import subprocess
 
-THRESHOLD = 14
+THRESHOLD = 6.9
 
 ##
 ## Helpers
@@ -44,12 +44,18 @@ def filter_normal(l):
 def to_float(datastr):
     return map(float, datastr.rstrip().splitlines())
 
+def false_negatives_perc(data):
+    return len(filter_normal(data))*100.0/len(data)
+
+def false_positives_perc(data):
+    return len(filter_anomalous(data))*100.0/len(data)
+
 ##
 ## Bayesian
 ##
 def run_bayesian(dist_type, train_data, test_data):
     os.chdir("../isc2")
-    out = subprocess.check_output(["./anomalydetector_poisson", dist_type, train_data, test_data])
+    out = subprocess.check_output(["./anomalydetector_impl", dist_type, train_data, test_data])
     os.chdir("../test")
     return out
 
@@ -79,10 +85,12 @@ def execute_test(datafolder, f):
             print data_dir, "against", other_data_dir
             # Get false negatives
             anom_out = to_float(f(get_merged_data(data_dir), get_anomalous_data(other_data_dir)))
-            print "False negatives perc:", len(filter_normal(anom_out))*100.0/len(anom_out), "%"
+            reference_anom_out = to_float(f(get_normal_data(data_dir), get_anomalous_data(other_data_dir)))
+            print "False negatives perc:", false_negatives_perc(anom_out), "% after vs", false_negatives_perc(reference_anom_out), "% before"
             # Get false positives
             norm_out = to_float(f(get_merged_data(data_dir), get_normal_data(other_data_dir)))
-            print "False positives perc:", len(filter_anomalous(norm_out))*100.0/len(norm_out), "%"
+            reference_norm_out = to_float(f(get_normal_data(data_dir), get_normal_data(other_data_dir)))
+            print "False positives perc:", false_positives_perc(norm_out), "% after vs", false_positives_perc(reference_norm_out), "% before"
 
 ##
 ## Main

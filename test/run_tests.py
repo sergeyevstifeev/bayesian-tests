@@ -79,6 +79,9 @@ def execute_nonbayesian_test(datafolder, dist_type):
 
 def execute_test(datafolder, f):
     data_dirs = get_immediate_subdirectories(datafolder)
+    if len(data_dirs) == 0:
+        print "No data subfolders in", datafolder
+        exit(1)
     for data_dir in data_dirs:
         # other_dirs = remove_element(data_dir, data_dirs)
         for other_data_dir in data_dirs:

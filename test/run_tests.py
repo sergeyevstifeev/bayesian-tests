@@ -67,6 +67,7 @@ def execute_bayesian_test(datafolder, dist_type):
 ##
 def run_nonbayesian(dist_type, train_data, test_data):
     os.chdir("../nonbayesian")
+    out = None
     if (dist_type == "gaussian"):
         out = subprocess.check_output(["./gaussian.R", train_data, test_data])
     elif (dist_type == "poisson"):

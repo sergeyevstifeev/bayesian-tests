@@ -3,6 +3,7 @@
 import sys
 import os
 import subprocess
+import tempfile
 
 THRESHOLD = 6.9
 
@@ -21,19 +22,19 @@ def get_immediate_subdirectories(dir):
     return [name for name in os.listdir(dir)
             if os.path.isdir(os.path.join(dir, name))]
 
-def get_data(data_dir, data_type):
-    data = os.path.join(datafolder, data_dir, data_type)
+def get_data(data_folder, data_dir, data_type):
+    data = os.path.join(data_folder, data_dir, data_type)
     check_file_exists(data)
     return data
 
-def get_normal_data(data_dir):
-    return get_data(data_dir, "normal")
+def get_normal_data(data_folder, data_dir):
+    return get_data(data_folder, data_dir, "normal")
 
-def get_anomalous_data(data_dir):
-    return get_data(data_dir, "anomalous")
+def get_anomalous_data(data_folder, data_dir):
+    return get_data(data_folder, data_dir, "anomalous")
 
-def get_merged_data(data_dir):
-    return get_data(data_dir, "merged")
+def get_merged_data(data_folder, data_dir):
+    return get_data(data_folder, data_dir, "merged")
 
 def filter_anomalous(l):
     return filter (lambda x: x > THRESHOLD, l)
@@ -78,47 +79,76 @@ def run_nonbayesian(dist_type, train_data, test_data):
 def execute_nonbayesian_test(datafolder, dist_type):
     execute_test(datafolder, lambda x,y: run_nonbayesian(dist_type,x,y))
 
-def execute_test(datafolder, f):
-    data_dirs = get_immediate_subdirectories(datafolder)
+def execute_test(data_folder, f):
+    data_dirs = get_immediate_subdirectories(data_folder)
     if len(data_dirs) == 0:
-        print "No data subfolders in", datafolder
+        print "No data subfolders in", data_folder
         exit(1)
     for data_dir in data_dirs:
         # other_dirs = remove_element(data_dir, data_dirs)
         for other_data_dir in data_dirs:
             print data_dir, "against", other_data_dir
             # Get false negatives
-            anom_out = to_float(f(get_merged_data(data_dir), get_anomalous_data(other_data_dir)))
-            reference_anom_out = to_float(f(get_normal_data(data_dir), get_anomalous_data(other_data_dir)))
+            anom_out = to_float(f(get_merged_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
+            reference_anom_out = to_float(f(get_normal_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
             print "False negatives perc:", false_negatives_perc(anom_out), "% after vs", false_negatives_perc(reference_anom_out), "% before"
             # Get false positives
-            norm_out = to_float(f(get_merged_data(data_dir), get_normal_data(other_data_dir)))
-            reference_norm_out = to_float(f(get_normal_data(data_dir), get_normal_data(other_data_dir)))
+            norm_out = to_float(f(get_merged_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
+            reference_norm_out = to_float(f(get_normal_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
             print "False positives perc:", false_positives_perc(norm_out), "% after vs", false_positives_perc(reference_norm_out), "% before"
 
 ##
 ## Main
 ##
-def main(datafolder, strategy, dist_type):
-    if (strategy == "frequentist"):
-        execute_nonbayesian_test(datafolder, dist_type)
-    elif (strategy == "bayesian"):
-        execute_bayesian_test(datafolder, dist_type)
+def main(data_folder, strategy, dist_type):
+    if strategy == "frequentist":
+        execute_nonbayesian_test(data_folder, dist_type)
+    elif strategy == "bayesian":
+        execute_bayesian_test(data_folder, dist_type)
+    else:
+        print "Unsupported strategy:", strategy
+        exit(1)
+
+def generate_data(spec_file, out_dir):
+    os.chdir("../isc-test-datasets")
+    out = None
+    subprocess.check_output(["./generator.R", spec_file, out_dir])
+    os.chdir("../test")
+    return out
+
+def test_spec():
+    data_folder = "/Users/sergey/Apps/datasets/out_dir"
+    data_spec = r'''Description,NormalType,AnomaliesType,NormalCount,AnomaliesCount,NormalMean,AnomaliesMean,NormalSd,AnomailesSd
+data1,poisson,gaussian,10000,100,2,6,1,2
+data2,poisson,gaussian,10000,100,10,20,1,2
+data3,poisson,gaussian,10000,100,20,30,1,2
+'''
+    dist_type = "poisson"
+    fd, path = tempfile.mkstemp()
+    os.write(fd, data_spec)
+    generate_data(path, data_folder)
+    print "Bayesian:\n======================================="
+    main(data_folder, "bayesian", dist_type)
+    print "Poisson:\n======================================="
+    main(data_folder, "frequentist", dist_type)
+    os.close(fd)
+    os.remove(path)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print "Usage:", sys.argv[0], "datafolder bayesian|frequentist gaussian|poisson"
-        exit(1)
-    datafolder = sys.argv[1]
-    if (not os.path.isdir(datafolder)):
-        print "Specified data folder", datafolder, "does not exist"
-        exit(1)
-    strategy = sys.argv[2]
-    if (strategy != "bayesian" and strategy != "frequentist"):
-        print "Unknown strategy:", strategy
-        exit(1)
-    dist_type = sys.argv[3]
-    if (dist_type != "gaussian" and dist_type != "poisson"):
-        print "Unknown distribution type:", dist_type
-        exit(1)
-    main(datafolder, strategy, dist_type)
+    test_spec()
+#    if len(sys.argv) != 4:
+#        print "Usage:", sys.argv[0], "datafolder bayesian|frequentist gaussian|poisson"
+#        exit(1)
+#    datafolder = sys.argv[1]
+#    if (not os.path.isdir(datafolder)):
+#        print "Specified data folder", datafolder, "does not exist"
+#        exit(1)
+#    strategy = sys.argv[2]
+#    if (strategy != "bayesian" and strategy != "frequentist"):
+#        print "Unknown strategy:", strategy
+#        exit(1)
+#    dist_type = sys.argv[3]
+#    if (dist_type != "gaussian" and dist_type != "poisson"):
+#        print "Unknown distribution type:", dist_type
+#        exit(1)
+#    main(datafolder, strategy, dist_type)

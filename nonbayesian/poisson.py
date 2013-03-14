@@ -17,26 +17,34 @@ def cdf(k, mean):
     return acc
 
 
-def lower_quantile_cd(prob, mean):
+def lower_quantile_cd(prob, mean, max_elem):
     i = 0
-    while pmf(i, mean) <= prob and i <= mean:
+    while pmf(i, mean) <= prob and i <= max_elem:
         i += 1
     return cdf(max(0, i - 1), mean)
 
 
-def upper_quantile_cd(prob, mean):
-    i = int(mean)
+def upper_quantile_cd(prob, mean, max_elem):
+    i = int(max_elem)
     while pmf(i, mean) > prob:
         i += 1
     return 1 - cdf(i, mean)
 
 
-def log_principal_anomaly(k, mean):
+def log_principal_anomaly(k, mean, max_elem):
     prob = pmf(k, mean)
-    lower_q = lower_quantile_cd(prob, mean)
-    upper_q = upper_quantile_cd(prob, mean)
+    lower_q = lower_quantile_cd(prob, mean, max_elem)
+    upper_q = upper_quantile_cd(prob, mean, max_elem)
     return -log(lower_q + upper_q)
 
+
+def max_pois_elem(mean):
+    i = 0
+    max_val = pmf(0, mean)
+    while pmf(i + 1, mean) > max_val:
+        max_val = pmf(i, mean)
+        i += 1
+    return i
 
 def verify_file_exists(filename):
     if not os.path.isfile(filename):
@@ -66,7 +74,8 @@ def main():
     train_data_list = read_data_file(train_data_file)
     mean = float(sum(train_data_list)) / len(train_data_list)
     test_data_list = read_data_file(test_data_file)
-    print '\n'.join(map(lambda elem: str(log_principal_anomaly(elem, mean)), test_data_list))
+    max_elem = max_pois_elem(mean)
+    print '\n'.join(map(lambda elem: str(log_principal_anomaly(elem, mean, max_elem)), test_data_list))
     print
 
 

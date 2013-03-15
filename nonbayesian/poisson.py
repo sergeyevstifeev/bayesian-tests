@@ -5,6 +5,8 @@ import sys
 import os
 from math import *
 
+INFINITY_SUBSTITUTE = 2147483647
+
 
 def pmf(k, mean):
     return pow(mean, k) * exp(-mean) / factorial(k)
@@ -19,23 +21,34 @@ def cdf(k, mean):
 
 def lower_quantile_cd(prob, mean, max_elem):
     i = 0
-    while pmf(i, mean) <= prob and i <= max_elem:
-        i += 1
-    return cdf(max(0, i - 1), mean)
+    if pmf(0, mean) > prob:
+        return 0
+    else:
+        while pmf(i, mean) <= prob and i <= max_elem:
+            i += 1
+        return cdf(max(0, i - 1), mean)
 
 
 def upper_quantile_cd(prob, mean, max_elem):
     i = int(max_elem)
     while pmf(i, mean) > prob:
         i += 1
-    return 1 - cdf(i, mean)
+    res = 1 - cdf(i, mean)
+    if res < 0:  # precision errors
+        return 0
+    else:
+        return res
 
 
 def log_principal_anomaly(k, mean, max_elem):
     prob = pmf(k, mean)
     lower_q = lower_quantile_cd(prob, mean, max_elem)
     upper_q = upper_quantile_cd(prob, mean, max_elem)
-    return -log(lower_q + upper_q)
+    accum_quantile = lower_q + upper_q
+    if accum_quantile == 0:
+        return INFINITY_SUBSTITUTE
+    else:
+        return -log(accum_quantile)
 
 
 def max_pois_elem(mean):
@@ -45,6 +58,7 @@ def max_pois_elem(mean):
         max_val = pmf(i, mean)
         i += 1
     return i
+
 
 def verify_file_exists(filename):
     if not os.path.isfile(filename):

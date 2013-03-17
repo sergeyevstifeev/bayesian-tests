@@ -1,3 +1,0 @@
-[submodule "isc-test-datasets"]
-	path = isc-test-datasets
-	url = git@bitbucket.org:sergeyevstifeev/isc-test-datasets.git

@@ -135,7 +135,7 @@ def test_all(data_folder, strategy, normal_entries_distr):
 
 
 def generate_data(spec_file, out_dir):
-    os.chdir("../isc-test-datasets")
+    os.chdir("../data_generator")
     out = None
     subprocess.check_output(["./generator.R", spec_file, out_dir])
     os.chdir("../test")

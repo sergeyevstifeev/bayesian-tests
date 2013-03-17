@@ -1,0 +1,2 @@
+Description,NormalType,AnomaliesType,NormalCount,AnomaliesCount,NormalMean,AnomaliesMean,NormalSd,AnomailesSd
+data1,gaussian,gaussian,100000,10,0,12,3,3

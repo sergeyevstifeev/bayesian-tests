@@ -4,9 +4,11 @@ import os
 import shutil
 import subprocess
 import sys
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..'))
 from lib.common_utils import verify_file_exists
 
 THRESHOLD = 6.9
+BASE_DIR = os.path.join(os.path.split(os.path.abspath(__file__))[0], '..')
 
 ## Helpers
 
@@ -68,12 +70,12 @@ def false_positives_percentage(data):
 
 def run_bayesian(normal_entries_distr, train_data, test_data):
     out = None
-    os.chdir("../bayesian")
+    os.chdir(os.path.join(BASE_DIR, "bayesian"))
     if normal_entries_distr == "gaussian":
         out = subprocess.check_output(["./t_student.py", train_data, test_data])
     elif normal_entries_distr == "poisson":
         out = subprocess.check_output(["./negative_binomial.R", train_data, test_data])
-    os.chdir("../test")
+    os.chdir(os.path.join(BASE_DIR, "test"))
     return out
 
 
@@ -85,13 +87,13 @@ def execute_bayesian_test(data_folder, normal_entries_distr):
 
 
 def run_nonbayesian(normal_entries_distr, train_data, test_data):
-    os.chdir("../nonbayesian")
+    os.chdir(os.path.join(BASE_DIR, "nonbayesian"))
     out = None
     if normal_entries_distr == "gaussian":
         out = subprocess.check_output(["./gaussian.R", train_data, test_data])
     elif normal_entries_distr == "poisson":
         out = subprocess.check_output(["./poisson.py", train_data, test_data])
-    os.chdir("../test")
+    os.chdir(os.path.join(BASE_DIR, "test"))
     return out
 
 
@@ -135,10 +137,10 @@ def test_all(data_folder, strategy, normal_entries_distr):
 
 
 def generate_data(spec_file, out_dir):
-    os.chdir("../data_generator")
+    os.chdir(os.path.join(BASE_DIR, "data_generator"))
     out = None
     subprocess.check_output(["./generator.R", spec_file, out_dir])
-    os.chdir("../test")
+    os.chdir(os.path.join(BASE_DIR, "test"))
     return out
 
 
@@ -150,7 +152,7 @@ def clean_folder(data_folder):
 
 def test_spec(out_dir, data_spec):
     normal_entries_distr = "gaussian"
-    clean_folder(out_dir)
+    #clean_folder(out_dir)
     generate_data(data_spec, out_dir)
     print "Bayesian:\n======================================="
     test_all(out_dir, "bayesian", normal_entries_distr)

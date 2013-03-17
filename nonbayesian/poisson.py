@@ -1,7 +1,8 @@
 #!/usr/bin/python
-
+import os
 import sys
 from math import *
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..'))
 from lib.common_utils import verify_file_exists, read_data_file
 
 INFINITY_SUBSTITUTE = 2147483647

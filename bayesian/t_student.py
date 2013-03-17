@@ -1,9 +1,10 @@
 #!/usr/bin/python
-
+import os
 import sys
 from math import log
 from math import sqrt
 from scipy.stats import t
+sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..'))
 from lib.common_utils import verify_file_exists, read_data_file
 
 

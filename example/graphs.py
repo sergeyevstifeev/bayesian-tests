@@ -4,7 +4,7 @@ import sys
 import math
 
 
-def student_variance(N, Q, S):
+def scaling_parameter(N, Q, S):
     return (N * Q - math.pow(S, 2)) * (N - 1) / (N * (N + 1) * (N - 3))
 
 
@@ -28,10 +28,10 @@ def graph_predictive_normal(args):
     print "S =", S
     print "Q =", Q
     print "S/N =", Mean
-    print "Student variance =", student_variance(N, Q, S)
+    print "Student variance =", scaling_parameter(N, Q, S)
     print "Normal standard deviation=", normal_stand_deviation(dist_entries)
     print "Plot[{PDF[StudentTDistribution[", Mean, ",", \
-        math.sqrt(student_variance(N, Q, S)), ",", N - 1, "], x], PDF[NormalDistribution[", \
+        math.sqrt(scaling_parameter(N, Q, S)), ",", N - 1, "], x], PDF[NormalDistribution[", \
         Mean, ",", normal_stand_deviation(dist_entries), "], x], PDF[NormalDistribution[0, 1], x]}, {x, -4, 4}]"
 
 

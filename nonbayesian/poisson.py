@@ -1,9 +1,8 @@
 #!/usr/bin/python
 
-import csv
 import sys
-import os
 from math import *
+from lib.common_utils import verify_file_exists, read_data_file
 
 INFINITY_SUBSTITUTE = 2147483647
 
@@ -60,23 +59,6 @@ def max_pois_elem(mean):
     return i
 
 
-def verify_file_exists(filename):
-    if not os.path.isfile(filename):
-        print "File does not exist:", filename
-        exit(1)
-
-
-def read_data_file(filename):
-    data_list = []
-    with open(filename, 'rb') as f:
-        csv_reader = csv.reader(f, delimiter='\t')
-        csv_reader.next()  # skip header line
-        for line in csv_reader:
-            if line:
-                data_list.append(int(line[0]))
-    return data_list
-
-
 def main():
     if len(sys.argv) != 3:
         print "Usage:", sys.argv[0], "<train_data_file> <test_data_file>"
@@ -85,12 +67,11 @@ def main():
     verify_file_exists(train_data_file)
     test_data_file = sys.argv[2]
     verify_file_exists(test_data_file)
-    train_data_list = read_data_file(train_data_file)
+    train_data_list = read_data_file(train_data_file, lambda x: int(x))
     mean = float(sum(train_data_list)) / len(train_data_list)
-    test_data_list = read_data_file(test_data_file)
+    test_data_list = read_data_file(test_data_file, lambda x: int(x))
     max_elem = max_pois_elem(mean)
     print '\n'.join(map(lambda elem: str(log_principal_anomaly(elem, mean, max_elem)), test_data_list))
-    print
 
 
 if __name__ == '__main__':

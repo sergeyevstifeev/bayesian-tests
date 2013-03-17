@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
 import os
+import shutil
 import subprocess
-import tempfile
+import sys
+from lib.common_utils import verify_file_exists
 
 THRESHOLD = 6.9
 
@@ -54,43 +56,47 @@ def to_float(datastr):
     return map(float, datastr.rstrip().splitlines())
 
 
-def false_negatives_perc(data):
+def false_negatives_percentage(data):
     return len(filter_normal(data)) * 100.0 / len(data)
 
 
-def false_positives_perc(data):
+def false_positives_percentage(data):
     return len(filter_anomalous(data)) * 100.0 / len(data)
 
 ## Bayesian
 
 
-def run_bayesian(dist_type, train_data, test_data):
-    os.chdir("../isc2")
-    out = subprocess.check_output(["./anomalydetector_impl", dist_type, train_data, test_data])
+def run_bayesian(normal_entries_distr, train_data, test_data):
+    out = None
+    os.chdir("../bayesian")
+    if normal_entries_distr == "gaussian":
+        out = subprocess.check_output(["./t_student.py", train_data, test_data])
+    elif normal_entries_distr == "poisson":
+        out = subprocess.check_output(["./negative_binomial.R", train_data, test_data])
     os.chdir("../test")
     return out
 
 
-def execute_bayesian_test(datafolder, dist_type):
-    execute_test(datafolder, lambda x, y: run_bayesian(dist_type, x, y))
+def execute_bayesian_test(data_folder, normal_entries_distr):
+    execute_test(data_folder, lambda x, y: run_bayesian(normal_entries_distr, x, y))
 
 
 ## Nonbayesian
 
 
-def run_nonbayesian(dist_type, train_data, test_data):
+def run_nonbayesian(normal_entries_distr, train_data, test_data):
     os.chdir("../nonbayesian")
     out = None
-    if dist_type == "gaussian":
+    if normal_entries_distr == "gaussian":
         out = subprocess.check_output(["./gaussian.R", train_data, test_data])
-    elif dist_type == "poisson":
+    elif normal_entries_distr == "poisson":
         out = subprocess.check_output(["./poisson.py", train_data, test_data])
     os.chdir("../test")
     return out
 
 
-def execute_nonbayesian_test(datafolder, dist_type):
-    execute_test(datafolder, lambda x, y: run_nonbayesian(dist_type, x, y))
+def execute_nonbayesian_test(datafolder, normal_entries_distr):
+    execute_test(datafolder, lambda x, y: run_nonbayesian(normal_entries_distr, x, y))
 
 
 def execute_test(data_folder, f):
@@ -99,31 +105,30 @@ def execute_test(data_folder, f):
         print "No data subfolders in", data_folder
         exit(1)
     for data_dir in data_dirs:
-        # other_dirs = remove_element(data_dir, data_dirs)
-        for other_data_dir in data_dirs:
+        for other_data_dir in [data_dir]:
             print data_dir, "against", other_data_dir
             # Get false negatives
             anom_out = to_float(
                 f(get_merged_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
             reference_anom_out = to_float(
                 f(get_normal_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
-            print "False negatives perc:", false_negatives_perc(anom_out), "% after vs", false_negatives_perc(
-                reference_anom_out), "% before"
+            print "False negatives perc:", false_negatives_percentage(anom_out), "% after",\
+                "vs", false_negatives_percentage(reference_anom_out), "% before"
             # Get false positives
             norm_out = to_float(f(get_merged_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
             reference_norm_out = to_float(
                 f(get_normal_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
-            print "False positives perc:", false_positives_perc(norm_out), "% after vs", false_positives_perc(
-                reference_norm_out), "% before"
+            print "False positives perc:", false_positives_percentage(norm_out), "% after ",\
+                "vs", false_positives_percentage(reference_norm_out), "% before"
 
 ## Main
 
 
-def main(data_folder, strategy, dist_type):
+def test_all(data_folder, strategy, normal_entries_distr):
     if strategy == "frequentist":
-        execute_nonbayesian_test(data_folder, dist_type)
+        execute_nonbayesian_test(data_folder, normal_entries_distr)
     elif strategy == "bayesian":
-        execute_bayesian_test(data_folder, dist_type)
+        execute_bayesian_test(data_folder, normal_entries_distr)
     else:
         print "Unsupported strategy:", strategy
         exit(1)
@@ -131,60 +136,35 @@ def main(data_folder, strategy, dist_type):
 
 def generate_data(spec_file, out_dir):
     os.chdir("../isc-test-datasets")
-    # negative binomial
     out = None
     subprocess.check_output(["./generator.R", spec_file, out_dir])
     os.chdir("../test")
     return out
 
 
-def test_spec():
-    data_folder = "/Users/sergey/Apps/datasets/out_dir"
-    data_spec = r'''Description,NormalType,AnomaliesType,NormalCount,AnomaliesCount,NormalMean,AnomaliesMean,NormalSd,AnomailesSd
-data1,poisson,poisson,100,1,20,6,2,2
-data2,poisson,poisson,10000,1,20,6,2,2
-data3,poisson,poisson,100000,1,20,6,2,2
-'''
-    dist_type = "poisson"
-    #    data_spec = r'''Description,NormalType,AnomaliesType,NormalCount,AnomaliesCount,NormalMean,AnomaliesMean,NormalSd,AnomailesSd
-    #data1,gaussian,gaussian,100,1,15,6,2,2
-    #data2,gaussian,gaussian,1000,1,15,6,2,2
-    #data3,gaussian,gaussian,100000,1,15,6,2,2
-    #'''
-    #    dist_type = "gaussian"
-    #
-    #    data_spec = r'''Description,NormalType,AnomaliesType,NormalCount,AnomaliesCount,NormalMean,AnomaliesMean,NormalSd,AnomailesSd
-    #data1,poisson,poisson,100,1,20,6,2,2
-    #data2,poisson,poisson,10000,1,20,6,2,2
-    #data3,poisson,poisson,100000,1,20,6,2,2
-    #'''
-    #    dist_type = "poisson"
-    fd, path = tempfile.mkstemp()
-    os.write(fd, data_spec)
-    generate_data(path, data_folder)
+def clean_folder(data_folder):
+    subdirs = get_immediate_subdirectories(data_folder)
+    for subdir in subdirs:
+        shutil.rmtree(os.path.join(data_folder, subdir))
+
+
+def test_spec(out_dir, data_spec):
+    normal_entries_distr = "gaussian"
+    clean_folder(out_dir)
+    generate_data(data_spec, out_dir)
     print "Bayesian:\n======================================="
-    main(data_folder, "bayesian", dist_type)
+    test_all(out_dir, "bayesian", normal_entries_distr)
     print "\nFrequentist:\n======================================="
-    main(data_folder, "frequentist", dist_type)
-    os.close(fd)
-    os.remove(path)
+    test_all(out_dir, "frequentist", normal_entries_distr)
 
 
 if __name__ == '__main__':
-    test_spec()
-#    if len(sys.argv) != 4:
-#        print "Usage:", sys.argv[0], "datafolder bayesian|frequentist gaussian|poisson"
-#        exit(1)
-#    datafolder = sys.argv[1]
-#    if (not os.path.isdir(datafolder)):
-#        print "Specified data folder", datafolder, "does not exist"
-#        exit(1)
-#    strategy = sys.argv[2]
-#    if (strategy != "bayesian" and strategy != "frequentist"):
-#        print "Unknown strategy:", strategy
-#        exit(1)
-#    dist_type = sys.argv[3]
-#    if (dist_type != "gaussian" and dist_type != "poisson"):
-#        print "Unknown distribution type:", dist_type
-#        exit(1)
-#    main(datafolder, strategy, dist_type)
+    if len(sys.argv) != 4:
+        print "Usage:", sys.argv[0], "<data_spec> <normal_entries_distr> <out_dir>\n"
+        print "Note that contents of <out_dir> will be wiped out!"
+        exit(1)
+    data_spec = sys.argv[1]
+    normal_entries_distr = sys.argv[2]
+    out_dir = sys.argv[3]
+    verify_file_exists(data_spec)
+    test_spec(out_dir, data_spec)

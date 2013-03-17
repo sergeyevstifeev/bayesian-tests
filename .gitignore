@@ -1,6 +1,4 @@
 datafiles
 *.o
 *.dSYM
-isc2/libisc.a
 *~
-isc2/anomalydetector_impl

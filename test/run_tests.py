@@ -7,7 +7,6 @@ import sys
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..'))
 from lib.common_utils import verify_file_exists
 
-THRESHOLD = 6.9
 BASE_DIR = os.path.join(os.path.split(os.path.abspath(__file__))[0], '..')
 
 ## Helpers
@@ -46,24 +45,24 @@ def get_merged_data(data_folder, data_dir):
     return get_data(data_folder, data_dir, "merged")
 
 
-def filter_anomalous(l):
-    return filter(lambda x: x > THRESHOLD, l)
+def filter_anomalous(l, threshold):
+    return filter(lambda x: x > threshold, l)
 
 
-def filter_normal(l):
-    return filter(lambda x: x <= THRESHOLD, l)
+def filter_normal(l, threshold):
+    return filter(lambda x: x <= threshold, l)
 
 
 def to_float(datastr):
     return map(float, datastr.rstrip().splitlines())
 
 
-def false_negatives_percentage(data):
-    return len(filter_normal(data)) * 100.0 / len(data)
+def false_negatives_percentage(data, threshold):
+    return len(filter_normal(data, threshold)) * 100.0 / len(data)
 
 
-def false_positives_percentage(data):
-    return len(filter_anomalous(data)) * 100.0 / len(data)
+def false_positives_percentage(data, threshold):
+    return len(filter_anomalous(data, threshold)) * 100.0 / len(data)
 
 ## Bayesian
 
@@ -79,8 +78,8 @@ def run_bayesian(normal_entries_distr, train_data, test_data):
     return out
 
 
-def execute_bayesian_test(data_folder, normal_entries_distr):
-    execute_test(data_folder, lambda x, y: run_bayesian(normal_entries_distr, x, y))
+def execute_bayesian_test(data_folder, normal_entries_distr, threshold):
+    calculate_rates(data_folder, lambda x, y: run_bayesian(normal_entries_distr, x, y), threshold)
 
 
 ## Nonbayesian
@@ -97,40 +96,41 @@ def run_nonbayesian(normal_entries_distr, train_data, test_data):
     return out
 
 
-def execute_nonbayesian_test(datafolder, normal_entries_distr):
-    execute_test(datafolder, lambda x, y: run_nonbayesian(normal_entries_distr, x, y))
+def execute_nonbayesian_test(datafolder, normal_entries_distr, threshold):
+    calculate_rates(datafolder, lambda x, y: run_nonbayesian(normal_entries_distr, x, y), threshold)
 
 
-def execute_test(data_folder, f):
+def calculate_rates(data_folder, f, threshold):
     data_dirs = get_immediate_subdirectories(data_folder)
     if len(data_dirs) == 0:
         print "No data subfolders in", data_folder
         exit(1)
     for data_dir in data_dirs:
-        for other_data_dir in [data_dir]:
-            print data_dir, "against", other_data_dir
-            # Get false negatives
-            anom_out = to_float(
-                f(get_merged_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
-            reference_anom_out = to_float(
-                f(get_normal_data(data_folder, data_dir), get_anomalous_data(data_folder, other_data_dir)))
-            print "False negatives perc:", false_negatives_percentage(anom_out), "% after",\
-                "vs", false_negatives_percentage(reference_anom_out), "% before"
-            # Get false positives
-            norm_out = to_float(f(get_merged_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
-            reference_norm_out = to_float(
-                f(get_normal_data(data_folder, data_dir), get_normal_data(data_folder, other_data_dir)))
-            print "False positives perc:", false_positives_percentage(norm_out), "% after ",\
-                "vs", false_positives_percentage(reference_norm_out), "% before"
+        print "Stats for", data_dir
+        # Fetch data
+        merged_data = get_merged_data(data_folder, data_dir)
+        anomalous_data = get_anomalous_data(data_folder, data_dir)
+        normal_data = get_normal_data(data_folder, data_dir)
+        # Calculate false negative rates
+        false_negative_rate_merged = false_negatives_percentage(to_float(f(merged_data, anomalous_data)), threshold)
+        false_negative_rate_clean = false_negatives_percentage(to_float(f(normal_data, anomalous_data)), threshold)
+        print "False negative rate when training with merged data:", false_negative_rate_merged, "%\n" \
+            "False negative rate when training with clean data: ", false_negative_rate_clean, "%"
+        ## Calculate false positive rates
+        false_positive_rate_merged = false_positives_percentage(to_float(f(merged_data, normal_data)), threshold)
+        false_positive_rate_clean = false_positives_percentage(to_float(f(normal_data, normal_data)), threshold)
+        print "False positive rate when training with merged data:", false_positive_rate_merged, "%\n" \
+            "False positive rate when training with clean data: ", false_positive_rate_clean, "%"
 
 ## Main
 
 
 def test_all(data_folder, strategy, normal_entries_distr):
+    threshold = 6.9
     if strategy == "frequentist":
-        execute_nonbayesian_test(data_folder, normal_entries_distr)
+        execute_nonbayesian_test(data_folder, normal_entries_distr, threshold)
     elif strategy == "bayesian":
-        execute_bayesian_test(data_folder, normal_entries_distr)
+        execute_bayesian_test(data_folder, normal_entries_distr, threshold)
     else:
         print "Unsupported strategy:", strategy
         exit(1)

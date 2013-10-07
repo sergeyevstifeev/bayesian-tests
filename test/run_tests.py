@@ -57,12 +57,12 @@ def to_float(datastr):
     return map(float, datastr.rstrip().splitlines())
 
 
-def false_negatives_percentage(data, threshold):
-    return len(filter_normal(data, threshold)) * 100.0 / len(data)
+def false_negatives_rate(data, threshold):
+    return len(filter_normal(data, threshold)) / float(len(data))
 
 
-def false_positives_percentage(data, threshold):
-    return len(filter_anomalous(data, threshold)) * 100.0 / len(data)
+def false_positives_rate(data, threshold):
+    return len(filter_anomalous(data, threshold)) / float(len(data))
 
 ## Bayesian
 
@@ -78,8 +78,8 @@ def run_bayesian(normal_entries_distr, train_data, test_data):
     return out
 
 
-def execute_bayesian_test(data_folder, normal_entries_distr, threshold):
-    calculate_rates(data_folder, lambda x, y: run_bayesian(normal_entries_distr, x, y), threshold)
+def calculate_bayesian_rates(data_folder, normal_entries_distr, threshold):
+    return calculate_rates(data_folder, lambda x, y: run_bayesian(normal_entries_distr, x, y), threshold)
 
 
 ## Nonbayesian
@@ -96,8 +96,8 @@ def run_nonbayesian(normal_entries_distr, train_data, test_data):
     return out
 
 
-def execute_nonbayesian_test(datafolder, normal_entries_distr, threshold):
-    calculate_rates(datafolder, lambda x, y: run_nonbayesian(normal_entries_distr, x, y), threshold)
+def calculate_nonbayesian_rates(datafolder, normal_entries_distr, threshold):
+    return calculate_rates(datafolder, lambda x, y: run_nonbayesian(normal_entries_distr, x, y), threshold)
 
 
 def calculate_rates(data_folder, f, threshold):
@@ -106,31 +106,29 @@ def calculate_rates(data_folder, f, threshold):
         print "No data subfolders in", data_folder
         exit(1)
     for data_dir in data_dirs:
-        print "Stats for", data_dir
         # Fetch data
         merged_data = get_merged_data(data_folder, data_dir)
         anomalous_data = get_anomalous_data(data_folder, data_dir)
         normal_data = get_normal_data(data_folder, data_dir)
         # Calculate false negative rates
-        false_negative_rate_merged = false_negatives_percentage(to_float(f(merged_data, anomalous_data)), threshold)
-        false_negative_rate_clean = false_negatives_percentage(to_float(f(normal_data, anomalous_data)), threshold)
-        print "False negative rate when training with merged data:", false_negative_rate_merged, "%\n" \
-            "False negative rate when training with clean data: ", false_negative_rate_clean, "%"
+        false_negative_rate_merged = false_negatives_rate(to_float(f(merged_data, anomalous_data)), threshold)
+        false_negative_rate_clean = false_negatives_rate(to_float(f(normal_data, anomalous_data)), threshold)
         ## Calculate false positive rates
-        false_positive_rate_merged = false_positives_percentage(to_float(f(merged_data, normal_data)), threshold)
-        false_positive_rate_clean = false_positives_percentage(to_float(f(normal_data, normal_data)), threshold)
-        print "False positive rate when training with merged data:", false_positive_rate_merged, "%\n" \
-            "False positive rate when training with clean data: ", false_positive_rate_clean, "%"
+        false_positive_rate_merged = false_positives_rate(to_float(f(merged_data, normal_data)), threshold)
+        false_positive_rate_clean = false_positives_rate(to_float(f(normal_data, normal_data)), threshold)
+        return (false_negative_rate_merged,
+                false_negative_rate_clean,
+                false_positive_rate_merged,
+                false_positive_rate_clean)
 
 ## Main
 
 
-def test_all(data_folder, strategy, normal_entries_distr):
-    threshold = 6.9
+def rates(data_folder, strategy, normal_entries_distr, threshold):
     if strategy == "frequentist":
-        execute_nonbayesian_test(data_folder, normal_entries_distr, threshold)
+        return calculate_nonbayesian_rates(data_folder, normal_entries_distr, threshold)
     elif strategy == "bayesian":
-        execute_bayesian_test(data_folder, normal_entries_distr, threshold)
+        return calculate_bayesian_rates(data_folder, normal_entries_distr, threshold)
     else:
         print "Unsupported strategy:", strategy
         exit(1)
@@ -150,14 +148,34 @@ def clean_folder(data_folder):
         shutil.rmtree(os.path.join(data_folder, subdir))
 
 
-def test_spec(out_dir, data_spec):
-    normal_entries_distr = "gaussian"
-    #clean_folder(out_dir)
+def test_spec(out_dir, data_spec, normal_entries_distr):
     generate_data(data_spec, out_dir)
+    threshold = 6.9
     print "Bayesian:\n======================================="
-    test_all(out_dir, "bayesian", normal_entries_distr)
+    rates(out_dir, "bayesian", normal_entries_distr, threshold)
     print "\nFrequentist:\n======================================="
-    test_all(out_dir, "frequentist", normal_entries_distr)
+    rates(out_dir, "frequentist", normal_entries_distr, threshold)
+
+def average_rates(out_dir, data_spec, normal_entries_distr, threshold, iterations, strategy):
+    false_negative_rate_merged_acc = 0
+    false_negative_rate_clean_acc = 0
+    false_positive_rate_merged_acc = 0
+    false_positive_rate_clean_acc = 0
+    for i in range(0, iterations):
+        sys.stdout.write('.')
+        generate_data(data_spec, out_dir)
+        (false_negative_rate_merged,
+         false_negative_rate_clean,
+         false_positive_rate_merged,
+         false_positive_rate_clean) = rates(out_dir, strategy, normal_entries_distr, threshold)
+        false_negative_rate_merged_acc += false_negative_rate_merged
+        false_negative_rate_clean_acc += false_negative_rate_clean
+        false_positive_rate_merged_acc += false_positive_rate_merged
+        false_positive_rate_clean_acc += false_positive_rate_clean
+    return (false_negative_rate_merged_acc/float(iterations),
+            false_negative_rate_clean_acc/float(iterations),
+            false_positive_rate_merged_acc/float(iterations),
+            false_positive_rate_clean_acc/float(iterations))
 
 
 if __name__ == '__main__':
@@ -169,4 +187,4 @@ if __name__ == '__main__':
     normal_entries_distr = sys.argv[2]
     out_dir = sys.argv[3]
     verify_file_exists(data_spec)
-    test_spec(out_dir, data_spec)
+    print average_rates(out_dir, data_spec, normal_entries_distr, 6.9, 50, "frequentist")

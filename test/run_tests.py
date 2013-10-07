@@ -4,6 +4,8 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+from multiprocessing import Pool
 sys.path.append(os.path.join(os.path.split(os.path.abspath(__file__))[0], '..'))
 from lib.common_utils import verify_file_exists
 
@@ -156,38 +158,49 @@ def test_spec(out_dir, data_spec, normal_entries_distr):
     print "\nFrequentist:\n======================================="
     rates(out_dir, "frequentist", normal_entries_distr, threshold)
 
-def average_rates(out_dir, data_spec, normal_entries_distr, threshold, iterations, strategy):
+def generate_data_and_compute_rates(data_spec, strategy, normal_entries_distr, threshold):
+    sys.stdout.write('.')
+    out_dir = tempfile.mkdtemp()
+    generate_data(data_spec, out_dir)
+    var_rates = rates(out_dir, strategy, normal_entries_distr, threshold)
+    shutil.rmtree(out_dir)
+    return var_rates
+
+def average_rates(data_spec, normal_entries_distr, threshold, iterations, strategy):
     false_negative_rate_merged_acc = 0
     false_negative_rate_clean_acc = 0
     false_positive_rate_merged_acc = 0
     false_positive_rate_clean_acc = 0
-    for i in range(0, iterations):
-        sys.stdout.write('.')
-        generate_data(data_spec, out_dir)
-        (false_negative_rate_merged,
-         false_negative_rate_clean,
-         false_positive_rate_merged,
-         false_positive_rate_clean) = rates(out_dir, strategy, normal_entries_distr, threshold)
-        false_negative_rate_merged_acc += false_negative_rate_merged
-        false_negative_rate_clean_acc += false_negative_rate_clean
-        false_positive_rate_merged_acc += false_positive_rate_merged
-        false_positive_rate_clean_acc += false_positive_rate_clean
+    pool = Pool(1)
+    rate_map = pool.map(RateCalculator(data_spec, strategy, normal_entries_distr, threshold), range(iterations))
+    for result_item in rate_map:
+        false_negative_rate_merged_acc += result_item[0]
+        false_negative_rate_clean_acc += result_item[1]
+        false_positive_rate_merged_acc += result_item[2]
+        false_positive_rate_clean_acc += result_item[3]
     return (false_negative_rate_merged_acc/float(iterations),
             false_negative_rate_clean_acc/float(iterations),
             false_positive_rate_merged_acc/float(iterations),
             false_positive_rate_clean_acc/float(iterations))
 
+class RateCalculator(object):
+    def __init__(self, data_spec, strategy, normal_entries_distr, threshold):
+        self.data_spec = data_spec
+        self.strategy = strategy
+        self.normal_entries_distr = normal_entries_distr
+        self.threshold = threshold
+    def __call__(self, ignored):
+        return generate_data_and_compute_rates(data_spec, strategy, normal_entries_distr, threshold)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 7:
-        print "Usage:", sys.argv[0], "<data_spec> <normal_entries_distr> <out_dir> <iterations> <threshold> <frequentist|bayesian>\n"
+    if len(sys.argv) != 6:
+        print "Usage:", sys.argv[0], "<data_spec> <normal_entries_distr> <iterations> <threshold> <frequentist|bayesian>\n"
         print "Note that contents of <out_dir> will be wiped out!"
         exit(1)
     data_spec = sys.argv[1]
     normal_entries_distr = sys.argv[2]
-    out_dir = sys.argv[3]
-    iterations = int(sys.argv[4])
-    threshold = float(sys.argv[5])
-    strategy = sys.argv[6]
+    iterations = int(sys.argv[3])
+    threshold = float(sys.argv[4])
+    strategy = sys.argv[5]
     verify_file_exists(data_spec)
-    print average_rates(out_dir, data_spec, normal_entries_distr, threshold, iterations, strategy)
+    print average_rates(data_spec, normal_entries_distr, threshold, iterations, strategy)

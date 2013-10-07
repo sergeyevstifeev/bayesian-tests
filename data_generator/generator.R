@@ -66,7 +66,7 @@ generate_dataset <- function(x, out_dir="generated/") {
     if (! file.exists(dirname)) {
         dir.create(dirname)
     }
-    message(paste("Writing", description(x), "into", dirname))
+    #message(paste("Writing", description(x), "into", dirname))
     write.table(normal_data, paste(dirname, "/normal", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
     write.table(anomalous_data, paste(dirname, "/anomalous", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
     write.table(rbind(normal_data, anomalous_data), paste(dirname, "/merged", sep=""), row.names=FALSE, sep="\t", quote=FALSE)

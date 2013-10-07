@@ -179,12 +179,15 @@ def average_rates(out_dir, data_spec, normal_entries_distr, threshold, iteration
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print "Usage:", sys.argv[0], "<data_spec> <normal_entries_distr> <out_dir>\n"
+    if len(sys.argv) != 7:
+        print "Usage:", sys.argv[0], "<data_spec> <normal_entries_distr> <out_dir> <iterations> <threshold> <frequentist|bayesian>\n"
         print "Note that contents of <out_dir> will be wiped out!"
         exit(1)
     data_spec = sys.argv[1]
     normal_entries_distr = sys.argv[2]
     out_dir = sys.argv[3]
+    iterations = int(sys.argv[4])
+    threshold = float(sys.argv[5])
+    strategy = sys.argv[6]
     verify_file_exists(data_spec)
-    print average_rates(out_dir, data_spec, normal_entries_distr, 6.9, 50, "frequentist")
+    print average_rates(out_dir, data_spec, normal_entries_distr, threshold, iterations, strategy)

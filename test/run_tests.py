@@ -171,7 +171,7 @@ def average_rates(data_spec, normal_entries_distr, threshold, iterations, strate
     false_negative_rate_clean_acc = 0
     false_positive_rate_merged_acc = 0
     false_positive_rate_clean_acc = 0
-    pool = Pool(1)
+    pool = Pool()
     rate_map = pool.map(RateCalculator(data_spec, strategy, normal_entries_distr, threshold), range(iterations))
     for result_item in rate_map:
         false_negative_rate_merged_acc += result_item[0]

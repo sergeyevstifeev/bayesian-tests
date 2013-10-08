@@ -9,9 +9,10 @@ from lib.common_utils import verify_file_exists, read_data_file
 
 
 def log_principal_anomaly(x, N, Q, S):
+    assert N > 3, "N must be more than 3, is %r" % N
     mean = float(S) / N
     val = mean - abs(mean - x)
-    scale = sqrt((float(N) * Q - pow(S, 2)) / ((N + 1) * (N - 3)))
+    scale = sqrt(max(0, (float(N) * Q - pow(S, 2))) / ((N + 1) * (N - 3)))
     t_cdf = t.cdf(val, N - 1, loc=mean, scale=scale)
     return -log(2 * t_cdf)
 

@@ -172,7 +172,8 @@ def average_rates(data_spec, normal_entries_distr, threshold, iterations, strate
     false_positive_rate_merged_acc = 0
     false_positive_rate_clean_acc = 0
     pool = Pool()
-    rate_map = pool.map(RateCalculator(data_spec, strategy, normal_entries_distr, threshold), range(iterations))
+    rate_map = pool.map_async(RateCalculator(data_spec, strategy, normal_entries_distr, threshold), range(iterations))\
+        .get(9999999) # workaround bug with KeyboardInterrupt http://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool)
     for result_item in rate_map:
         false_negative_rate_merged_acc += result_item[0]
         false_negative_rate_clean_acc += result_item[1]

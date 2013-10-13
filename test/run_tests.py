@@ -139,7 +139,7 @@ def rates(data_folder, strategy, normal_entries_distr, threshold):
 def generate_data(spec_file, out_dir):
     os.chdir(os.path.join(BASE_DIR, "data_generator"))
     out = None
-    subprocess.check_output(["./generator.R", spec_file, out_dir])
+    subprocess.check_output(["./generator.py", spec_file, out_dir])
     os.chdir(os.path.join(BASE_DIR, "test"))
     return out
 
@@ -160,11 +160,15 @@ def test_spec(out_dir, data_spec, normal_entries_distr):
 
 def generate_data_and_compute_rates(data_spec, strategy, normal_entries_distr, threshold):
     sys.stdout.write('.')
+    sys.stdout.flush()
     out_dir = tempfile.mkdtemp()
     generate_data(data_spec, out_dir)
-    var_rates = rates(out_dir, strategy, normal_entries_distr, threshold)
-    shutil.rmtree(out_dir)
-    return var_rates
+    try:
+        var_rates = rates(out_dir, strategy, normal_entries_distr, threshold)
+        shutil.rmtree(out_dir)
+        return var_rates
+    except Exception as e:
+        raise (e, "Exception! out_dir to reproduce:", out_dir)
 
 def average_rates(data_spec, normal_entries_distr, threshold, iterations, strategy):
     false_negative_rate_merged_acc = 0

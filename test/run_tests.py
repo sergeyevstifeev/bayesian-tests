@@ -39,6 +39,10 @@ def get_normal_data(data_folder, data_dir):
     return get_data(data_folder, data_dir, "normal")
 
 
+def get_normal_data2(data_folder, data_dir):
+    return get_data(data_folder, data_dir, "normal2")
+
+
 def get_anomalous_data(data_folder, data_dir):
     return get_data(data_folder, data_dir, "anomalous")
 
@@ -112,12 +116,13 @@ def calculate_rates(data_folder, f, threshold):
         merged_data = get_merged_data(data_folder, data_dir)
         anomalous_data = get_anomalous_data(data_folder, data_dir)
         normal_data = get_normal_data(data_folder, data_dir)
+        normal_data2 = get_normal_data2(data_folder, data_dir)
         # Calculate false negative rates
         false_negative_rate_merged = false_negatives_rate(to_float(f(merged_data, anomalous_data)), threshold)
         false_negative_rate_clean = false_negatives_rate(to_float(f(normal_data, anomalous_data)), threshold)
         ## Calculate false positive rates
-        false_positive_rate_merged = false_positives_rate(to_float(f(merged_data, normal_data)), threshold)
-        false_positive_rate_clean = false_positives_rate(to_float(f(normal_data, normal_data)), threshold)
+        false_positive_rate_merged = false_positives_rate(to_float(f(merged_data, normal_data2)), threshold)
+        false_positive_rate_clean = false_positives_rate(to_float(f(normal_data, normal_data2)), threshold)
         return (false_negative_rate_merged,
                 false_negative_rate_clean,
                 false_positive_rate_merged,

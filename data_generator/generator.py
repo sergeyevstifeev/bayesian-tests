@@ -49,11 +49,13 @@ def generate_dataset(spec, out_dir):
     anomalies_mean = float(spec['AnomaliesMean'])
     anomalies_sd = float(spec['AnomailesSd'])
     normal_data = generate_data(normal_type, normal_count, normal_mean, normal_sd)
+    normal_data2 = generate_data(normal_type, normal_count, normal_mean, normal_sd)
     anomalies_data = generate_data(anomalies_type, anomalies_count, anomalies_mean, anomalies_sd)
     dest_dir = os.path.join(out_dir, description)
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
     write(should_add_intervals, normal_data, os.path.join(dest_dir, 'normal'))
+    write(should_add_intervals, normal_data2, os.path.join(dest_dir, 'normal2'))
     write(should_add_intervals, anomalies_data, os.path.join(dest_dir, 'anomalous'))
     write(should_add_intervals, np.append(normal_data, anomalies_data), os.path.join(dest_dir, 'merged'))
 

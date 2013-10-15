@@ -213,4 +213,9 @@ if __name__ == '__main__':
     threshold = float(sys.argv[4])
     strategy = sys.argv[5]
     verify_file_exists(data_spec)
-    print average_rates(data_spec, normal_entries_distr, threshold, iterations, strategy)
+    averages = average_rates(data_spec, normal_entries_distr, threshold, iterations, strategy)
+    output_format = '{0:.10f}'
+    print (output_format.format(averages[0]),
+           output_format.format(averages[1]),
+           output_format.format(averages[2]),
+           output_format.format(averages[3]))

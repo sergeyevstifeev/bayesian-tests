@@ -53,6 +53,13 @@ generate_dataset <- function(x, out_dir="generated/") {
                                           as.numeric(normal_count(x)),
                                           as.numeric(normal_mean(x)),
                                           as.numeric(normal_sd(x))))
+    normal_data2 <-
+        maybe_add_intervals(should_add_intervals,
+                            generate_data(normal_type(x),
+                                          as.numeric(normal_count(x)),
+                                          as.numeric(normal_mean(x)),
+                                          as.numeric(normal_sd(x))))
+
     anomalous_data <-
         maybe_add_intervals(should_add_intervals,
                             generate_data(anomalies_type(x),
@@ -68,6 +75,7 @@ generate_dataset <- function(x, out_dir="generated/") {
     }
     #message(paste("Writing", description(x), "into", dirname))
     write.table(normal_data, paste(dirname, "/normal", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
+    write.table(normal_data2, paste(dirname, "/normal2", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
     write.table(anomalous_data, paste(dirname, "/anomalous", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
     write.table(rbind(normal_data, anomalous_data), paste(dirname, "/merged", sep=""), row.names=FALSE, sep="\t", quote=FALSE)
 }
